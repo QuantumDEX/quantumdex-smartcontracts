@@ -1,173 +1,147 @@
-# QuantumDEX — Smart Contracts (Solidity/Hardhat)
+# QuantumDEX — Smart Contracts
 
-This folder contains the Hardhat project for the Solidity version of our AMM DEX. We're porting the original Clarity implementation to Solidity, improving testability and adding modern security features.
+Solidity implementation of QuantumDEX - a decentralized exchange (AMM) and token streaming platform for Ethereum-compatible chains. Built with Hardhat and following OpenZeppelin security best practices. Primary deployment target: Base and Base Sepolia testnet.
 
-## Quick start
+## Overview
+
+QuantumDEX consists of two main protocol contracts:
+
+### Automated Market Maker (AMM) DEX
+- **Permissionless pool creation** for any ERC20 token pair
+- **Liquidity provision** with automatic fee distribution
+- **Token swaps** using the constant product formula (x * y = k)
+- **Deterministic pool IDs** for efficient routing
+
+### Token Streaming Protocol
+- **Continuous payment streams** between sender and recipient
+- **Time-based token distribution** with configurable payment per block
+- **Flexible withdrawal** of accumulated tokens
+- **Stream parameter updates** with dual-party consent via signatures
+
+## Features
+
+- ✅ Constant Product Market Maker (CPMM) formula
+- ✅ Configurable swap fees (basis points)
+- ✅ Reentrancy protection
+- ✅ Comprehensive test coverage
+- ✅ Gas-optimized storage layout
+
+## Tech Stack
+
+- **Solidity:** ^0.8.28
+- **Framework:** Hardhat
+- **Testing:** Viem, Node.js test runner
+- **Security:** OpenZeppelin Contracts
+
+## Quick Start
 
 ```bash
-cd QuantumDEX/smart-contracts
+# Install dependencies
 npm install
+
+# Compile contracts
 npx hardhat compile
+
+# Run tests
 npx hardhat test
+
+# Run tests with gas reporting
+REPORT_GAS=true npx hardhat test
 ```
 
-## Project Structure (Planned)
+## Project Structure
 
 ```
 contracts/
-  ├── AMM.sol           # Main AMM implementation (port of amm.clar)
-  ├── MockToken.sol     # ERC20 token for testing
-  └── interfaces/       # Contract interfaces
+├── AMM.sol          # Main AMM contract (DEX)
+├── TokenStreaming.sol  # Token streaming protocol contract
+└── MockToken.sol    # ERC20 token for testing
+
 tests/
-  ├── AMM.test.ts      # Core contract tests
-  └── helpers/         # Test utilities
+├── AMM.test.ts      # AMM test suite
+└── TokenStreaming.test.ts  # Token streaming test suite
+
 scripts/
-  └── deploy.ts        # Deployment script
+└── deploy.ts        # Deployment scripts
 ```
 
-## Contributing via Issues
+## Contract Functions
 
-Each task below will be created as a GitHub issue labeled `smart-contracts`. Pick an issue, create a branch, and submit a PR.
+### AMM (DEX) Operations
 
-Smart Contract Tasks:
+- `createPool(tokenA, tokenB, amountA, amountB)` - Create a new pool with initial liquidity
+- `addLiquidity(poolId, amount0, amount1)` - Add liquidity to an existing pool
+- `removeLiquidity(poolId, liquidity)` - Remove liquidity and receive tokens
+- `swap(poolId, tokenIn, amountIn, minAmountOut, recipient)` - Execute a token swap
 
-### Core Implementation
+### AMM View Functions
 
-- ERC20 Mock Token
+- `getPool(poolId)` - Get pool information (reserves, fee, etc.)
+- `getLpBalance(poolId, account)` - Get user's LP token balance
+- `getPoolId(tokenA, tokenB, feeBps)` - Calculate deterministic pool ID
 
-  - Description: Implement `MockToken.sol` with mint capability for testing
-  - Features: ERC20 standard + public mint function
-  - Priority: High (needed for testing)
+### Token Streaming Operations
 
-- AMM Core Contract
-  - Description: Port `amm.clar` core functions to Solidity
-  - Features:
-    - createPool(): Create trading pair + initial liquidity
-    - addLiquidity(): Add to existing pool
-    - removeLiquidity(): Remove liquidity + receive tokens
-    - swap(): Execute trades with constant product formula
-  - Priority: High (core functionality)
+- `createStream(recipient, token, initialBalance, timeframe, paymentPerBlock)` - Create a new payment stream
+- `refuel(streamId, amount)` - Add more tokens to an existing stream
+- `withdraw(streamId)` - Withdraw accumulated tokens (recipient only)
+- `refund(streamId)` - Withdraw excess tokens after stream ends (sender only)
+- `updateStreamDetails(streamId, paymentPerBlock, timeframe, signature)` - Update stream parameters with consent
 
-### Protocol Design
+### Token Streaming View Functions
 
-- Deterministic Pool ID
+- `getStream(streamId)` - Get stream information
+- `getWithdrawableBalance(streamId, account)` - Get withdrawable balance for an account
+- `hashStream(streamId, newPaymentPerBlock, newTimeframe)` - Get hash for signature verification
 
-  - Description: Design pool identifier system
-  - Features:
-    - bytes32 pool id from token addresses + fee
-    - Deterministic address ordering
-  - Priority: High (architecture)
+## Testing
 
-- Fee & Math Implementation
-  - Description: Port Clarity math to safe Solidity
-  - Features:
-    - Safe math operations
-    - Fee calculations matching Clarity
-    - Integer division rounding rules
-  - Priority: Medium
-
-### Security & Testing
-
-- Security Hardening
-
-  - Description: Add modern security features
-  - Features:
-    - Reentrancy guards
-    - Checks-Effects-Interactions pattern
-    - Access control system
-  - Priority: High
-
-- Test Coverage
-  - Description: Full test suite with edge cases
-  - Features:
-    - Unit tests for all functions
-    - Integration tests for workflows
-    - Gas optimization tests
-  - Priority: Medium
-
-## Workflow
-
-1. Pick an issue labeled `smart-contracts`
-2. Comment "Working on this"
-3. Branch: `issue/<number>-<description>`
-4. PR with:
-   - Tests
-   - Gas report
-   - Security considerations
-
-## PR Requirements
-
-- [ ] Contracts compile without warnings
-- [ ] All tests pass
-- [ ] Gas optimizations documented
-- [ ] Security review completed
-- [ ] Event emissions verified
-
-# QuantumDEX — Smart Contracts (Hardhat)
-
-This folder contains the Hardhat TypeScript scaffold for the Solidity version of the AMM.
-
-Quick start
+The test suite covers:
+- Pool creation and initial liquidity
+- Adding and removing liquidity
+- Token swaps with fee calculations
+- Constant product formula verification
+- Edge cases and error handling
 
 ```bash
-cd QuantumDEX/smart-contracts
-npm install
-npx hardhat
+# Run all tests
+npx hardhat test
+
+# Run specific test file
+npx hardhat test test/AMM.test.ts
 ```
 
-Purpose
+## Deployment
 
-Port the Clarity AMM (`amm/contracts/amm.clar`) to Solidity and provide a testable Hardhat project.
+```bash
+# Deploy to local network
+npx hardhat node
+npx hardhat run scripts/deploy.ts --network localhost
 
-Contributing via Issues
+# Deploy to Base Sepolia (testnet)
+npx hardhat run scripts/deploy.ts --network baseSepolia
 
-Each task below should be created as a GitHub issue with the `smart-contracts` label so contributors can pick and work on them.
+# Deploy to Base (mainnet)
+npx hardhat run scripts/deploy.ts --network base
+```
 
-Smart-contract issues (create one issue per bullet):
+**Primary deployment targets:** Base Sepolia (testnet) and Base (mainnet)
 
-- ERC20 Mock Token
+## Contributing
 
-  - Short: Implement `MockToken.sol` (ERC20 with mint)
-  - Description: Provide an ERC20 token with a public `mint` for tests.
-  - Acceptance: Token compiles and can mint tokens to test accounts.
+We welcome contributions! To get started:
 
-- AMM Core Contract
+1. **Pick an issue** from [`ISSUES.md`](./ISSUES.md)
+2. **Create a branch** using the issue number: `issue/<number>-short-description`
+3. **Implement your changes** following the issue's acceptance criteria
+4. **Submit a PR** with the issue number in the title/description
 
-  - Short: Implement `AMM.sol` core functions
-  - Description: Port createPool, addLiquidity, removeLiquidity, swap, getters, and events from Clarity to Solidity.
-  - Acceptance: Contract compiles and exposes public functions and events.
+When pushing your changes, include the issue number or title in your commit messages.
 
-- Deterministic Pool ID
+## Security
 
-  - Short: Pool identifier
-  - Description: Choose bytes32 pool id derived from token addresses + fee; ensure deterministic ordering of token addresses.
-  - Acceptance: Pool id stable across deployments and matches event data.
+This codebase has been reviewed for common vulnerabilities, but **has not undergone a professional security audit**. Use at your own risk.
 
-- Fee & Rounding Edge Cases
+## License
 
-  - Short: Fee math safety
-  - Description: Verify fee calculations and integer division rounding; add unit tests demonstrating behavior.
-  - Acceptance: Tests cover rounding behavior and fee subtraction.
-
-- Security: Reentrancy & Access Controls
-
-  - Short: Hardening
-  - Description: Add reentrancy guards and checks-effects-interactions; review visibility and access where needed.
-  - Acceptance: Audit checklist and tests for common attack vectors.
-
-- Unit Tests (Hardhat + Viem/Node test runner)
-  - Short: Tests for core flows
-  - Description: Add tests for pool creation, initial liquidity add, add/remove liquidity, and swaps.
-  - Acceptance: Tests execute locally via `npx hardhat test` and pass.
-
-Workflow
-
-1. Pick an issue and comment "I am working on this".
-2. Create a branch `issue/<id>-short-description`.
-3. Open a PR referencing the issue and include test steps.
-
-PR checklist
-
-- [ ] Contracts compile
-- [ ] Tests added/updated and passing
-- [ ] Reviewed and approved
+See the main project LICENSE file.
