@@ -121,6 +121,30 @@ const config: HardhatUserConfig = {
       url: "https://alfajores-forno.celo-testnet.org",
       accounts: [deployerPrivateKey],
     },
+    base: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("BASE_RPC_URL"),
+      accounts: [configVariable("BASE_PRIVATE_KEY")],
+    },
+    baseSepolia: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("BASE_SEPOLIA_RPC_URL"),
+      accounts: [configVariable("BASE_SEPOLIA_PRIVATE_KEY")],
+    },
+    celo: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("CELO_RPC_URL"),
+      accounts: [configVariable("CELO_PRIVATE_KEY")],
+    },
+    celoAlfajores: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("CELO_ALFAJORES_RPC_URL"),
+      accounts: [configVariable("CELO_ALFAJORES_PRIVATE_KEY")],
+    },
   },
   // Configuration for harhdat-verify plugin
   etherscan: {
