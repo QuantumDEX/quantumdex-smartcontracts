@@ -151,6 +151,16 @@ This codebase has been reviewed for common vulnerabilities, but **has not underg
 
 - **Access Control**: Owner-only functions use OpenZeppelin's `Ownable` pattern for secure access control.
 
+### Minimum Liquidity Lock Implementation
+
+The minimum liquidity lock is implemented by:
+1. Requiring `sqrt(amount0 * amount1) > MINIMUM_LIQUIDITY` on pool creation
+2. Locking `MINIMUM_LIQUIDITY` (1000) tokens to `address(0)` forever
+3. User receives `sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY` tokens
+4. Preventing removal of liquidity that would leave pool below `MINIMUM_LIQUIDITY`
+
+This ensures pools can never be completely drained, maintaining protocol stability.
+
 ## License
 
 See the main project LICENSE file.
