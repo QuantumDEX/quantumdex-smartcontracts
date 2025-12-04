@@ -254,11 +254,12 @@ contract AMM is ReentrancyGuard, Ownable {
         require(amount0 > 0 && amount1 > 0, "insufficient amounts");
 
         // Prevent removing liquidity that would leave pool below MINIMUM_LIQUIDITY
-        uint256 newTotalSupply = _totalSupply - liquidity;
-        require(newTotalSupply >= MINIMUM_LIQUIDITY, "insufficient liquidity");
+        // This ensures the locked liquidity protection remains effective
+        uint256 remainingSupply = _totalSupply - liquidity;
+        require(remainingSupply >= MINIMUM_LIQUIDITY, "insufficient liquidity");
 
         pool.balanceOf[msg.sender] = balance - liquidity;
-        pool.totalSupply = newTotalSupply;
+        pool.totalSupply = remainingSupply;
         pool.reserve0 = uint112(uint256(reserve0) - amount0);
         pool.reserve1 = uint112(uint256(reserve1) - amount1);
 
