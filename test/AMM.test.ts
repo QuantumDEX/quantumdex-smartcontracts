@@ -896,4 +896,33 @@ describe("AMM", async () => {
     assert.equal(lockedBalance, 1000n, "Locked should be 1000");
     assert.equal(userBalance, 1n, "User should receive exactly 1 (1001 - 1000)");
   });
+
+  it("provides clear error when trying to remove below minimum", async () => {
+    if (!poolId) {
+      const events = await publicClient.getContractEvents({
+        address: amm.address,
+        abi: amm.abi,
+        eventName: "PoolCreated",
+        fromBlock: 0n,
+        strict: true,
+      });
+      poolId = (events[0] as any).args.poolId as `0x${string}`;
+    }
+
+    const lpBalance = await amm.read.getLpBalance([poolId, deployer.account.address]);
+    
+    // Try to remove all liquidity (should fail)
+    await assert.rejects(
+      async () => {
+        await amm.write.removeLiquidity([poolId, lpBalance], {
+          account: deployer.account
+        });
+      },
+      (error: any) => {
+        return error.message.includes("insufficient liquidity") || 
+               error.message.includes("revert");
+      },
+      "Should revert with insufficient liquidity error"
+    );
+  });
 });
