@@ -56,6 +56,18 @@ describe("AMM", async () => {
 
     assert.equal(logs.length, 1, "Should emit exactly one PoolCreated event");
 
+    // Verify LiquidityAdded event emits user liquidity (not total)
+    const liquidityAddedLogs = parseEventLogs({
+      abi: amm.abi,
+      logs: receipt.logs,
+      eventName: "LiquidityAdded",
+    }) as any[];
+
+    assert.equal(liquidityAddedLogs.length, 1, "Should emit exactly one LiquidityAdded event");
+    const emittedLiquidity = liquidityAddedLogs[0].args.liquidityMinted as bigint;
+    const expectedUserLiquidity = await amm.read.getLpBalance([poolId, deployer.account.address]);
+    assert.equal(emittedLiquidity, expectedUserLiquidity, "Event should emit user liquidity, not total");
+
     poolId = logs[0].args.poolId as `0x${string}`;
     assert.ok(poolId, "Pool ID should be defined");
 
