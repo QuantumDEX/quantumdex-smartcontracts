@@ -33,6 +33,8 @@ contract AMM is ReentrancyGuard, Ownable {
     /// @dev This prevents pool drainage attacks by ensuring some liquidity always remains.
     /// The locked liquidity is sent to address(0) and can never be removed.
     /// This is a critical security feature that prevents the last LP from draining the pool completely.
+    /// The value of 1000 is chosen to be small enough to not significantly impact users,
+    /// but large enough to prevent rounding errors and ensure pool stability.
     uint256 private constant MINIMUM_LIQUIDITY = 1000;
 
     event PoolCreated(
