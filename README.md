@@ -143,6 +143,14 @@ When pushing your changes, include the issue number or title in your commit mess
 
 This codebase has been reviewed for common vulnerabilities, but **has not undergone a professional security audit**. Use at your own risk.
 
+### Security Features
+
+- **Minimum Liquidity Lock**: On pool creation, 1000 liquidity tokens are permanently locked to address(0). This prevents pool drainage attacks where the last liquidity provider could drain the entire pool, leaving it unusable.
+
+- **Reentrancy Protection**: All state-changing functions are protected with `nonReentrant` modifier to prevent reentrancy attacks.
+
+- **Access Control**: Owner-only functions use OpenZeppelin's `Ownable` pattern for secure access control.
+
 ## License
 
 See the main project LICENSE file.
