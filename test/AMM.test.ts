@@ -858,4 +858,42 @@ describe("AMM", async () => {
     const lockedAfter = await amm.read.getLpBalance([poolId, "0x0000000000000000000000000000000000000000"]);
     assert.equal(lockedAfter, 1000n, "Locked liquidity should remain constant after adding more");
   });
+
+  it("handles liquidity just above MINIMUM_LIQUIDITY correctly", async () => {
+    // Test with liquidity = 1001 (just above minimum)
+    // sqrt(1001 * 1001) = 1001, user should receive 1
+    const justAboveA = 1001n;
+    const justAboveB = 1001n;
+
+    const tokenS = await viem.deployContract("MockToken", ["TokenS", "TKS", 18], {
+      account: deployer.account,
+    });
+    const tokenT = await viem.deployContract("MockToken", ["TokenT", "TKT", 18], {
+      account: deployer.account,
+    });
+
+    await tokenS.write.approve([amm.address, justAboveA], { account: deployer.account });
+    await tokenT.write.approve([amm.address, justAboveB], { account: deployer.account });
+
+    const tx = await amm.write.createPool(
+      [tokenS.address, tokenT.address, justAboveA, justAboveB],
+      { account: deployer.account }
+    );
+    await publicClient.getTransactionReceipt({ hash: tx });
+
+    const events = await publicClient.getContractEvents({
+      address: amm.address,
+      abi: amm.abi,
+      eventName: "PoolCreated",
+      fromBlock: 0n,
+      strict: true,
+    });
+
+    const edgePoolId = (events[events.length - 1] as any).args.poolId as `0x${string}`;
+    const userBalance = await amm.read.getLpBalance([edgePoolId, deployer.account.address]);
+    const lockedBalance = await amm.read.getLpBalance([edgePoolId, "0x0000000000000000000000000000000000000000"]);
+
+    assert.equal(lockedBalance, 1000n, "Locked should be 1000");
+    assert.equal(userBalance, 1n, "User should receive exactly 1 (1001 - 1000)");
+  });
 });
