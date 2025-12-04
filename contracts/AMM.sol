@@ -5,6 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/// @title Automated Market Maker (AMM) Contract
+/// @notice Implements a constant product market maker (x * y = k) with liquidity provision
+/// @dev Security Features:
+///      - Minimum liquidity lock prevents pool drainage attacks
+///      - ReentrancyGuard protects against reentrancy attacks
+///      - Ownable pattern for access control
 contract AMM is ReentrancyGuard, Ownable {
     struct Pool {
         address token0;
