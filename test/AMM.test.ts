@@ -925,4 +925,74 @@ describe("AMM", async () => {
       "Should revert with insufficient liquidity error"
     );
   });
+
+  it("comprehensive test: create, add, remove with minimum protection", async () => {
+    const initialA = 5_000n * 10n ** 18n;
+    const initialB = 10_000n * 10n ** 18n;
+
+    const tokenU = await viem.deployContract("MockToken", ["TokenU", "TKU", 18], {
+      account: deployer.account,
+    });
+    const tokenV = await viem.deployContract("MockToken", ["TokenV", "TKV", 18], {
+      account: deployer.account,
+    });
+
+    // Create pool
+    await tokenU.write.approve([amm.address, initialA], { account: deployer.account });
+    await tokenV.write.approve([amm.address, initialB], { account: deployer.account });
+
+    const createTx = await amm.write.createPool(
+      [tokenU.address, tokenV.address, initialA, initialB],
+      { account: deployer.account }
+    );
+    const createReceipt = await publicClient.getTransactionReceipt({ hash: createTx });
+
+    const createLogs = parseEventLogs({
+      abi: amm.abi,
+      logs: createReceipt.logs,
+      eventName: "PoolCreated",
+    }) as any[];
+
+    const comprehensivePoolId = createLogs[0].args.poolId as `0x${string}`;
+    
+    // Verify initial state
+    let locked = await amm.read.getLpBalance([comprehensivePoolId, "0x0000000000000000000000000000000000000000"]);
+    assert.equal(locked, 1000n, "Initial locked should be 1000");
+
+    // Add liquidity
+    const extraA = 2_000n * 10n ** 18n;
+    const extraB = 4_000n * 10n ** 18n;
+    await tokenU.write.approve([amm.address, extraA], { account: deployer.account });
+    await tokenV.write.approve([amm.address, extraB], { account: deployer.account });
+    await amm.write.addLiquidity([comprehensivePoolId, extraA, extraB], {
+      account: deployer.account
+    });
+
+    // Locked should still be 1000
+    locked = await amm.read.getLpBalance([comprehensivePoolId, "0x0000000000000000000000000000000000000000"]);
+    assert.equal(locked, 1000n, "Locked should remain 1000 after adding");
+
+    // Remove some liquidity (but not all)
+    const userBalance = await amm.read.getLpBalance([comprehensivePoolId, deployer.account.address]);
+    const removeAmount = userBalance / 2n;
+    await amm.write.removeLiquidity([comprehensivePoolId, removeAmount], {
+      account: deployer.account
+    });
+
+    // Locked should still be 1000
+    locked = await amm.read.getLpBalance([comprehensivePoolId, "0x0000000000000000000000000000000000000000"]);
+    assert.equal(locked, 1000n, "Locked should remain 1000 after removal");
+
+    // Try to remove all remaining (should fail)
+    const remainingBalance = await amm.read.getLpBalance([comprehensivePoolId, deployer.account.address]);
+    await assert.rejects(
+      async () => {
+        await amm.write.removeLiquidity([comprehensivePoolId, remainingBalance], {
+          account: deployer.account
+        });
+      },
+      /insufficient liquidity/,
+      "Should prevent removing all remaining liquidity"
+    );
+  });
 });
