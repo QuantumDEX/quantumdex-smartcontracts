@@ -164,6 +164,7 @@ contract AMM is ReentrancyGuard, Ownable {
         // Lock MINIMUM_LIQUIDITY forever by assigning to address(0)
         // This prevents the last LP from draining the pool completely.
         // Formula: userLiquidity = sqrt(x * y) - MINIMUM_LIQUIDITY
+        // The locked liquidity ensures the pool always has a minimum reserve
         uint256 lockedLiquidity = MINIMUM_LIQUIDITY;
         uint256 userLiquidity = liquidity - lockedLiquidity;
 
