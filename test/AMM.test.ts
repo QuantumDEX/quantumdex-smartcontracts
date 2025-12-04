@@ -325,4 +325,78 @@ describe("AMM", async () => {
       "Should revert with 'slippage'"
     );
   });
+
+  it("reverts pool creation if liquidity is below MINIMUM_LIQUIDITY", async () => {
+    const smallA = 1n;
+    const smallB = 1n;
+
+    await tokenA.write.approve([amm.address, smallA], { account: deployer.account });
+    await tokenB.write.approve([amm.address, smallB], { account: deployer.account });
+
+    await assert.rejects(
+      async () => {
+        await amm.write.createPool(
+          [tokenA.address, tokenB.address, smallA, smallB],
+          { account: deployer.account }
+        );
+      },
+      /insufficient liquidity/,
+      "Should revert with 'insufficient liquidity' when below MINIMUM_LIQUIDITY"
+    );
+  });
+
+  it("prevents removing liquidity below MINIMUM_LIQUIDITY", async () => {
+    if (!poolId) {
+      const events = await publicClient.getContractEvents({
+        address: amm.address,
+        abi: amm.abi,
+        eventName: "PoolCreated",
+        fromBlock: 0n,
+        strict: true,
+      });
+      poolId = (events[0] as any).args.poolId as `0x${string}`;
+    }
+
+    const [, , , , , totalSupply] = await amm.read.getPool([poolId]);
+    const lpBalance = await amm.read.getLpBalance([poolId, deployer.account.address]);
+
+    // Try to remove all liquidity (should fail)
+    await assert.rejects(
+      async () => {
+        await amm.write.removeLiquidity([poolId, lpBalance], {
+          account: deployer.account
+        });
+      },
+      /insufficient liquidity/,
+      "Should revert when trying to remove all liquidity"
+    );
+  });
+
+  it("allows removing liquidity that leaves at least MINIMUM_LIQUIDITY", async () => {
+    if (!poolId) {
+      const events = await publicClient.getContractEvents({
+        address: amm.address,
+        abi: amm.abi,
+        eventName: "PoolCreated",
+        fromBlock: 0n,
+        strict: true,
+      });
+      poolId = (events[0] as any).args.poolId as `0x${string}`;
+    }
+
+    const [, , , , , totalSupply] = await amm.read.getPool([poolId]);
+    const lpBalance = await amm.read.getLpBalance([poolId, deployer.account.address]);
+
+    // Remove liquidity that leaves exactly MINIMUM_LIQUIDITY
+    const liquidityToRemove = lpBalance - 1000n; // Leave 1000 locked
+    if (liquidityToRemove > 0n) {
+      const removeRes = await amm.write.removeLiquidity([poolId, liquidityToRemove], {
+        account: deployer.account
+      });
+      await publicClient.getTransactionReceipt({ hash: removeRes });
+
+      const [, , , , , newTotalSupply] = await amm.read.getPool([poolId]);
+      assert.equal(newTotalSupply, 1000n, "Total supply should equal MINIMUM_LIQUIDITY");
+    }
+  });
 });
