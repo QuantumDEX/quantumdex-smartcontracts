@@ -788,4 +788,43 @@ describe("AMM", async () => {
     // Even if all user liquidity is removed, locked liquidity remains
     assert.ok(BigInt(totalSupply) >= 1000n, "Total supply should always be at least MINIMUM_LIQUIDITY");
   });
+
+  it("handles large liquidity amounts correctly with minimum lock", async () => {
+    const largeA = 1_000_000n * 10n ** 18n;
+    const largeB = 2_000_000n * 10n ** 18n;
+
+    const tokenQ = await viem.deployContract("MockToken", ["TokenQ", "TKQ", 18], {
+      account: deployer.account,
+    });
+    const tokenR = await viem.deployContract("MockToken", ["TokenR", "TKR", 18], {
+      account: deployer.account,
+    });
+
+    await tokenQ.write.approve([amm.address, largeA], { account: deployer.account });
+    await tokenR.write.approve([amm.address, largeB], { account: deployer.account });
+
+    const tx = await amm.write.createPool(
+      [tokenQ.address, tokenR.address, largeA, largeB],
+      { account: deployer.account }
+    );
+    await publicClient.getTransactionReceipt({ hash: tx });
+
+    const events = await publicClient.getContractEvents({
+      address: amm.address,
+      abi: amm.abi,
+      eventName: "PoolCreated",
+      fromBlock: 0n,
+      strict: true,
+    });
+
+    const largePoolId = (events[events.length - 1] as any).args.poolId as `0x${string}`;
+    const [, , , , , totalSupply] = await amm.read.getPool([largePoolId]);
+    const userBalance = await amm.read.getLpBalance([largePoolId, deployer.account.address]);
+    const lockedBalance = await amm.read.getLpBalance([largePoolId, "0x0000000000000000000000000000000000000000"]);
+
+    // With large amounts, MINIMUM_LIQUIDITY should be negligible but still present
+    assert.equal(lockedBalance, 1000n, "Locked liquidity should still be exactly 1000");
+    assert.ok(BigInt(userBalance) > 1000n, "User should receive much more than minimum");
+    assert.equal(BigInt(totalSupply), BigInt(userBalance) + BigInt(lockedBalance), "Total should equal user + locked");
+  });
 });
