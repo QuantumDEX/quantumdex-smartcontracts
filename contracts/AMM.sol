@@ -142,6 +142,8 @@ contract AMM is ReentrancyGuard, Ownable {
         if (feeBps == 0) {
             feeBps = defaultFeeBps;
         }
+        // Validate fee is within acceptable range (1-1000 basis points)
+        require(feeBps > 0 && feeBps <= 1000, "invalid fee");
         require(tokenA != tokenB, "identical tokens");
         require(tokenA != address(0) && tokenB != address(0), "zero address");
 
