@@ -150,9 +150,9 @@ contract AMM is ReentrancyGuard, Ownable {
         }
         // Validate fee is within acceptable range (1-1000 basis points)
         require(feeBps > 0 && feeBps <= 1000, "invalid fee");
-        require(tokenA != tokenB, "identical tokens");
-        // Allow address(0) for ETH, but both cannot be ETH
+        // Allow address(0) for ETH, but both cannot be ETH (check before identical tokens)
         require(!(tokenA == ETH && tokenB == ETH), "both ETH");
+        require(tokenA != tokenB, "identical tokens");
 
         // Validate ETH amount matches msg.value
         uint256 expectedEth = 0;
