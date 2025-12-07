@@ -292,5 +292,116 @@ contract AMMTest is Test {
         assertEq(userBalance, liquidity - MINIMUM_LIQUIDITY, "User should receive liquidity minus minimum");
         assertEq(totalSupply, userBalance + lockedBalance, "Total should equal user + locked");
     }
+
+    function test_CreatePoolWithCustomFee() public {
+        uint256 amountA = 1_000 * 10**18;
+        uint256 amountB = 2_000 * 10**18;
+        uint16 customFee = 50; // 0.50%
+
+        tokenA.approve(address(amm), amountA);
+        tokenB.approve(address(amm), amountB);
+
+        (bytes32 poolId, ) = amm.createPool(
+            address(tokenA),
+            address(tokenB),
+            amountA,
+            amountB,
+            customFee
+        );
+
+        (,,, , uint16 feeBps, ) = amm.getPool(poolId);
+        assertEq(feeBps, customFee, "Pool should have custom fee");
+    }
+
+    function test_CreatePoolWithZeroFeeUsesDefault() public {
+        uint256 amountA = 1_000 * 10**18;
+        uint256 amountB = 2_000 * 10**18;
+
+        tokenA.approve(address(amm), amountA);
+        tokenB.approve(address(amm), amountB);
+
+        (bytes32 poolId, ) = amm.createPool(
+            address(tokenA),
+            address(tokenB),
+            amountA,
+            amountB,
+            0 // Zero means use default
+        );
+
+        (,,, , uint16 feeBps, ) = amm.getPool(poolId);
+        assertEq(feeBps, FEE_BPS, "Pool should use default fee when 0 is passed");
+    }
+
+    function test_RevertIfFeeTooHigh() public {
+        uint256 amountA = 1_000 * 10**18;
+        uint256 amountB = 2_000 * 10**18;
+        uint16 invalidFee = 1001; // > 1000 bps (10%)
+
+        tokenA.approve(address(amm), amountA);
+        tokenB.approve(address(amm), amountB);
+
+        vm.expectRevert("invalid fee");
+        amm.createPool(
+            address(tokenA),
+            address(tokenB),
+            amountA,
+            amountB,
+            invalidFee
+        );
+    }
+
+    function test_DifferentFeesCreateDifferentPools() public {
+        uint256 amountA = 1_000 * 10**18;
+        uint256 amountB = 2_000 * 10**18;
+        uint16 fee1 = 30; // 0.30%
+        uint16 fee2 = 50; // 0.50%
+
+        tokenA.approve(address(amm), amountA * 2);
+        tokenB.approve(address(amm), amountB * 2);
+
+        (bytes32 poolId1, ) = amm.createPool(
+            address(tokenA),
+            address(tokenB),
+            amountA,
+            amountB,
+            fee1
+        );
+
+        (bytes32 poolId2, ) = amm.createPool(
+            address(tokenA),
+            address(tokenB),
+            amountA,
+            amountB,
+            fee2
+        );
+
+        assertNotEq(poolId1, poolId2, "Different fees should create different pools");
+        
+        (,,, , uint16 feeBps1, ) = amm.getPool(poolId1);
+        (,,, , uint16 feeBps2, ) = amm.getPool(poolId2);
+        
+        assertEq(feeBps1, fee1, "First pool should have fee1");
+        assertEq(feeBps2, fee2, "Second pool should have fee2");
+    }
+
+    function test_MaximumFeeAllowed() public {
+        uint256 amountA = 1_000 * 10**18;
+        uint256 amountB = 2_000 * 10**18;
+        uint16 maxFee = 1000; // 10% (maximum allowed)
+
+        tokenA.approve(address(amm), amountA);
+        tokenB.approve(address(amm), amountB);
+
+        (bytes32 poolId, ) = amm.createPool(
+            address(tokenA),
+            address(tokenB),
+            amountA,
+            amountB,
+            maxFee
+        );
+
+        (,,, , uint16 feeBps, ) = amm.getPool(poolId);
+        assertEq(feeBps, maxFee, "Pool should accept maximum fee of 1000 bps");
+    }
 }
 
