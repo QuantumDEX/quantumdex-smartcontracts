@@ -439,6 +439,31 @@ contract AMM is ReentrancyGuard, Ownable {
         return true;
     }
 
+    /// @notice Execute a single hop in a multi-hop swap
+    /// @dev Internal function to execute one swap in the path
+    /// @param poolId Pool identifier for this hop
+    /// @param tokenIn Input token address
+    /// @param tokenOut Output token address
+    /// @param amountIn Amount of input token
+    /// @param recipient Address to receive output (contract for intermediate hops, final recipient for last hop)
+    /// @return amountOut Amount of output token received
+    function _executeHop(
+        bytes32 poolId,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        address recipient
+    ) internal returns (uint256 amountOut) {
+        // Validate pool exists
+        Pool storage pool = pools[poolId];
+        if (!pool.exists) {
+            revert InvalidPool();
+        }
+        
+        // TODO: Implement hop execution logic
+        revert("Not implemented");
+    }
+
     function _getAmountOut(
         uint256 amountIn,
         uint112 reserveIn,
