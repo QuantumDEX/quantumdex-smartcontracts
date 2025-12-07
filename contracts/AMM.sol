@@ -378,6 +378,9 @@ contract AMM is ReentrancyGuard, Ownable {
     /// @notice Execute a multi-hop swap through multiple pools
     /// @dev Path format: [tokenIn, poolId1, tokenMid, poolId2, tokenOut, ...]
     /// @dev Path uses bytes32[] where even indices are tokens (as bytes32) and odd indices are poolIds
+    /// @dev Example: [tokenA, poolIdAB, tokenB, poolIdBC, tokenC] for A->B->C swap
+    /// @dev Each hop uses the previous output as input for the next swap
+    /// @dev Slippage protection is applied only to the final output amount
     /// @param path Array alternating between tokens (as bytes32) and poolIds
     /// @param amountIn Amount of input token
     /// @param minAmountOut Minimum amount of output token (slippage protection)
