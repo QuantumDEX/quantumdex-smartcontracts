@@ -45,7 +45,7 @@ describe("Multi-hop Swaps", function () {
 
   describe("Path Validation", function () {
     it("Should reject path with less than 3 elements", async function () {
-      const { amm } = await loadFixture(deployContractsFixture);
+      const { amm, alice } = await loadFixture(deployContractsFixture);
       const path = [ethers.ZeroAddress, ethers.ZeroAddress];
       
       await expect(
@@ -54,12 +54,38 @@ describe("Multi-hop Swaps", function () {
     });
 
     it("Should reject path with even length", async function () {
-      const { amm } = await loadFixture(deployContractsFixture);
+      const { amm, alice } = await loadFixture(deployContractsFixture);
       const path = [ethers.ZeroAddress, ethers.ZeroAddress, ethers.ZeroAddress, ethers.ZeroAddress];
       
       await expect(
         amm.swapMultiHop(path, ethers.parseUnits("100", 18), 0, alice.address)
       ).to.be.revertedWithCustomError(amm, "InvalidPath");
+    });
+
+    it("Should reject zero input amount", async function () {
+      const { amm, tokenA, tokenB, alice } = await loadFixture(deployContractsFixture);
+      const poolId = await amm.getPoolId(await tokenA.getAddress(), await tokenB.getAddress(), FEE_BPS);
+      const tokenABytes = ethers.zeroPadValue(await tokenA.getAddress(), 32);
+      const poolIdBytes = poolId;
+      const tokenBBytes = ethers.zeroPadValue(await tokenB.getAddress(), 32);
+      const path = [tokenABytes, poolIdBytes, tokenBBytes];
+      
+      await expect(
+        amm.swapMultiHop(path, 0, 0, alice.address)
+      ).to.be.revertedWith("zero input");
+    });
+
+    it("Should reject zero recipient", async function () {
+      const { amm, tokenA, tokenB } = await loadFixture(deployContractsFixture);
+      const poolId = await amm.getPoolId(await tokenA.getAddress(), await tokenB.getAddress(), FEE_BPS);
+      const tokenABytes = ethers.zeroPadValue(await tokenA.getAddress(), 32);
+      const poolIdBytes = poolId;
+      const tokenBBytes = ethers.zeroPadValue(await tokenB.getAddress(), 32);
+      const path = [tokenABytes, poolIdBytes, tokenBBytes];
+      
+      await expect(
+        amm.swapMultiHop(path, ethers.parseUnits("100", 18), 0, ethers.ZeroAddress)
+      ).to.be.revertedWith("zero recipient");
     });
   });
 });
