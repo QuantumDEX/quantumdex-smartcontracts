@@ -152,36 +152,32 @@ Full test suite with edge cases covering all functions and workflows.
   - Duplicate pool prevention
   - Minimum liquidity requirements
 
----
-
-## ❌ Pending Issues
-
 ### Issue #7: Minimum Liquidity Lock
-**Status:** ❌ PENDING  
-**Labels:** `smart-contracts`, `feature`, `security`  
+**Status:** ✅ COMPLETED  
+**Labels:** `smart-contracts`, `feature`, `security`, `completed`  
 **Priority:** MEDIUM
 
 **Description:**
 Implement minimum liquidity lock mechanism to prevent pool drainage attacks. This locks a minimum amount of liquidity forever when the first liquidity is added to a pool.
 
-**Current State:**
-- Pool creation mints liquidity based on `sqrt(amount0 * amount1)`
-- No minimum liquidity lock implemented
-
 **Acceptance Criteria:**
-- [ ] Define `MINIMUM_LIQUIDITY` constant (e.g., 1000)
-- [ ] On first liquidity add, subtract `MINIMUM_LIQUIDITY` from minted liquidity
-- [ ] Lock `MINIMUM_LIQUIDITY` tokens forever (send to zero address or burn)
-- [ ] Ensure pool can never have zero liquidity
-- [ ] Update tests to verify minimum liquidity lock
-- [ ] Document the security rationale
+- [x] Define `MINIMUM_LIQUIDITY` constant (1000)
+- [x] On first liquidity add, subtract `MINIMUM_LIQUIDITY` from minted liquidity
+- [x] Lock `MINIMUM_LIQUIDITY` tokens forever (sent to address(0))
+- [x] Ensure pool can never have zero liquidity
+- [x] Update tests to verify minimum liquidity lock
+- [x] Document the security rationale
 
-**Technical Notes:**
-- Formula: `liquidity = sqrt(x * y) - MINIMUM_LIQUIDITY`
-- Locked liquidity should be sent to `address(0)` or a burn address
-- This prevents the last LP from draining the pool completely
+**Implementation Notes:**
+- `MINIMUM_LIQUIDITY` constant defined as 1000 (line 38 in AMM.sol)
+- In `createPool`: locks MINIMUM_LIQUIDITY to `address(0)`, user receives `liquidity - MINIMUM_LIQUIDITY`
+- In `removeLiquidity`: prevents removal that would leave pool below MINIMUM_LIQUIDITY
+- Formula: `userLiquidity = sqrt(x * y) - MINIMUM_LIQUIDITY`
+- Security rationale documented in README.md Security Features section
 
 ---
+
+## ❌ Pending Issues
 
 ### Issue #8: Custom Fee Per Pool
 **Status:** ❌ PENDING  
