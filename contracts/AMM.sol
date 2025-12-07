@@ -408,6 +408,7 @@ contract AMM is ReentrancyGuard, Ownable {
         // Path: [token0, poolId1, token1, poolId2, token2]
         // Hops: 2 (token0->token1 via poolId1, token1->token2 via poolId2)
         uint256 numHops = (path.length - 1) / 2;
+        require(numHops > 0, "invalid path");
         uint256 currentAmount = amountIn;
         
         // Handle initial token transfer (only for first hop)
@@ -437,6 +438,9 @@ contract AMM is ReentrancyGuard, Ownable {
         
         amountOut = currentAmount;
         require(amountOut >= minAmountOut, "slippage");
+        
+        // Validate final output is non-zero
+        require(amountOut > 0, "zero output");
         
         // Emit MultiHopSwap event
         address finalTokenIn = address(uint160(uint256(path[0])));
