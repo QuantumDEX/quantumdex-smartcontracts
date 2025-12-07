@@ -177,35 +177,34 @@ Implement minimum liquidity lock mechanism to prevent pool drainage attacks. Thi
 
 ---
 
-## ❌ Pending Issues
-
 ### Issue #8: Custom Fee Per Pool
-**Status:** ❌ PENDING  
-**Labels:** `smart-contracts`, `feature`, `enhancement`  
+**Status:** ✅ COMPLETED  
+**Labels:** `smart-contracts`, `feature`, `enhancement`, `completed`  
 **Priority:** LOW
 
 **Description:**
 Allow users to specify custom fee when creating a pool, instead of using a global default fee.
 
-**Current State:**
-- Contract uses `defaultFeeBps` set in constructor
-- All pools use the same fee
-
 **Acceptance Criteria:**
-- [ ] Modify `createPool` to accept optional `feeBps` parameter
-- [ ] If not provided, use `defaultFeeBps`
-- [ ] Validate fee is within acceptable range (e.g., 1-1000 bps)
-- [ ] Store fee per pool in Pool struct
-- [ ] Update `getPool` to return pool-specific fee
-- [ ] Update tests
-- [ ] Update frontend to support fee selection
+- [x] Modify `createPool` to accept optional `feeBps` parameter
+- [x] If not provided, use `defaultFeeBps` (pass 0 to use default)
+- [x] Validate fee is within acceptable range (1-1000 bps)
+- [x] Store fee per pool in Pool struct (already existed)
+- [x] Update `getPool` to return pool-specific fee (already returned feeBps)
+- [x] Update tests
+- [ ] Update frontend to support fee selection (frontend issue)
 
-**Technical Notes:**
-- Fee should be validated: `require(feeBps > 0 && feeBps <= 1000, "invalid fee")`
-- Pool ID already includes fee, so different fees create different pools
-- Frontend issue #8 depends on this
+**Implementation Notes:**
+- `createPool` now accepts `uint16 feeBps` parameter
+- If `feeBps == 0`, uses `defaultFeeBps`
+- Fee validation: `require(feeBps > 0 && feeBps <= 1000, "invalid fee")`
+- Pool ID includes fee, so different fees create different pools
+- All existing tests updated to pass `0` for feeBps
+- New tests added for custom fees, validation, and different pools
 
 ---
+
+## ❌ Pending Issues
 
 ### Issue #9: Native ETH Support
 **Status:** ❌ PENDING  
