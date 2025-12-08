@@ -77,6 +77,15 @@ contract AMM is ReentrancyGuard, Ownable {
         address recipient
     );
 
+    event MultiHopSwap(
+        address indexed sender,
+        address[] path,
+        bytes32[] poolIds,
+        uint256 amountIn,
+        uint256 amountOut,
+        address recipient
+    );
+
     constructor(uint16 _defaultFeeBps) Ownable(msg.sender) {
         require(_defaultFeeBps <= 1000, "fee too high");
         defaultFeeBps = _defaultFeeBps;
