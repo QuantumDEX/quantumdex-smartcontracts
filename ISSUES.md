@@ -243,6 +243,44 @@ Extend AMM to support native ETH (WETH) in addition to ERC20 tokens. This would 
 ---
 
 ## ❌ Pending Issues
+**Status:** ✅ COMPLETED  
+**Labels:** `smart-contracts`, `feature`, `enhancement`, `completed`  
+**Priority:** LOW
+
+**Description:**
+Extend AMM to support native ETH (WETH) in addition to ERC20 tokens. This would allow users to trade ETH directly without wrapping.
+
+**Current State:**
+- ✅ Contract supports native ETH using address(0) pattern
+- ✅ Users can trade ETH directly without wrapping
+
+**Acceptance Criteria:**
+- [x] Add support for native ETH (address(0) or special address)
+- [x] Modify functions to handle ETH transfers
+- [x] Use `payable` functions where needed
+- [x] Handle ETH wrapping/unwrapping (native ETH handled directly, no wrapping needed)
+- [x] Update all functions to support both ERC20 and ETH
+- [x] Add tests for ETH swaps
+- [ ] Update frontend to support ETH (frontend repo, not in scope for smart contracts)
+
+**Technical Notes:**
+- Can use WETH pattern or handle native ETH directly
+- Need to modify transfer functions to handle `address(0)` as ETH
+- Consider gas costs of wrapping/unwrapping
+
+**Implementation Notes:**
+- Native ETH support implemented using `address(0)` as ETH identifier
+- `ETH` constant defined as `address(0)` in AMM contract
+- All relevant functions (`createPool`, `addLiquidity`, `removeLiquidity`, `swap`) are `payable`
+- `_safeTransfer` and `_safeTransferFrom` helper functions handle both ERC20 and ETH
+- ETH validation ensures `msg.value` matches expected ETH amounts
+- Comprehensive test suite covers ETH pool creation, liquidity operations, and swaps
+- Contract located at `contracts/AMM.sol`
+- Tests located at `test/AMM.test.ts` (Issue #9 test suite)
+
+---
+
+## ❌ Pending Issues
 
 ### Issue #10: Multi-hop Swaps
 **Status:** ❌ PENDING  
