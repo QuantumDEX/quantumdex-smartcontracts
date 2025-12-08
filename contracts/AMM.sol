@@ -41,11 +41,36 @@ contract AMM is ReentrancyGuard, Ownable {
     /// but large enough to prevent rounding errors and ensure pool stability.
     uint256 private constant MINIMUM_LIQUIDITY = 1000;
 
+    /// @notice Flash loan fee in basis points (9 = 0.09%)
+    /// @dev Standard flash loan fee rate used by major protocols
+    uint16 private constant FLASH_LOAN_FEE_BPS = 9;
+
+    /// @notice Interface for flash loan callback
+    /// @dev Contracts that want to receive flash loans must implement this interface
+    interface IFlashLoanReceiver {
+        /// @notice Called after receiving flash loan tokens
+        /// @param token Address of the token borrowed
+        /// @param amount Amount of tokens borrowed
+        /// @param fee Fee amount that must be repaid
+        /// @param data Additional data passed to the flash loan
+        function onFlashLoan(
+            address token,
+            uint256 amount,
+            uint256 fee,
+            bytes calldata data
+        ) external;
+    }
+
     // Custom errors for multi-hop swaps
     error InvalidPath();
     error InvalidPathLength();
     error InvalidPool();
     error SlippageExceeded();
+
+    // Custom errors for flash loans
+    error FlashLoanNotRepaid();
+    error FlashLoanInsufficientBalance();
+    error FlashLoanInvalidReceiver();
 
     event PoolCreated(
         bytes32 indexed poolId,
