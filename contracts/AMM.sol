@@ -257,8 +257,12 @@ contract AMM is ReentrancyGuard, Ownable {
         // This prevents the last LP from draining the pool completely.
         // Formula: userLiquidity = sqrt(x * y) - MINIMUM_LIQUIDITY
         // The locked liquidity ensures the pool always has a minimum reserve
+        // Safe to use unchecked: we already checked liquidity > MINIMUM_LIQUIDITY
         uint256 lockedLiquidity = MINIMUM_LIQUIDITY;
-        uint256 userLiquidity = liquidity - lockedLiquidity;
+        uint256 userLiquidity;
+        unchecked {
+            userLiquidity = liquidity - lockedLiquidity;
+        }
 
         pool.token0 = token0;
         pool.token1 = token1;
@@ -326,10 +330,13 @@ contract AMM is ReentrancyGuard, Ownable {
         );
         if (liquidity == 0) revert ZeroLiquidity();
 
-        pool.totalSupply = _totalSupply + liquidity;
-        pool.balanceOf[msg.sender] += liquidity;
-        pool.reserve0 = uint112(uint256(reserve0) + amount0);
-        pool.reserve1 = uint112(uint256(reserve1) + amount1);
+        // Safe to use unchecked: amounts are validated > 0, reserves are validated > 0
+        unchecked {
+            pool.totalSupply = _totalSupply + liquidity;
+            pool.balanceOf[msg.sender] += liquidity;
+            pool.reserve0 = uint112(uint256(reserve0) + amount0);
+            pool.reserve1 = uint112(uint256(reserve1) + amount1);
+        }
 
         emit LiquidityAdded(poolId, msg.sender, liquidity, amount0, amount1);
     }
@@ -366,10 +373,13 @@ contract AMM is ReentrancyGuard, Ownable {
         uint256 remainingSupply = _totalSupply - liquidity;
         if (remainingSupply < MINIMUM_LIQUIDITY) revert InsufficientLiquidity();
 
-        pool.balanceOf[msg.sender] = balance - liquidity;
+        // Safe to use unchecked: we already validated balance >= liquidity and amounts > 0
+        unchecked {
+            pool.balanceOf[msg.sender] = balance - liquidity;
+            pool.reserve0 = uint112(uint256(reserve0) - amount0);
+            pool.reserve1 = uint112(uint256(reserve1) - amount1);
+        }
         pool.totalSupply = remainingSupply;
-        pool.reserve0 = uint112(uint256(reserve0) - amount0);
-        pool.reserve1 = uint112(uint256(reserve1) - amount1);
 
         _safeTransfer(pool.token0, msg.sender, amount0);
         _safeTransfer(pool.token1, msg.sender, amount1);
@@ -417,15 +427,21 @@ contract AMM is ReentrancyGuard, Ownable {
             amountOut = _getAmountOut(amountInWithFee, reserve0, reserve1);
             if (amountOut < minAmountOut) revert SlippageExceeded();
 
-            pool.reserve0 = uint112(uint256(reserve0) + amountIn);
-            pool.reserve1 = uint112(uint256(reserve1) - amountOut);
+            // Safe to use unchecked: amountIn > 0 validated, amountOut < reserve1 (from formula)
+            unchecked {
+                pool.reserve0 = uint112(uint256(reserve0) + amountIn);
+                pool.reserve1 = uint112(uint256(reserve1) - amountOut);
+            }
             _safeTransfer(pool.token1, recipient, amountOut);
         } else {
             amountOut = _getAmountOut(amountInWithFee, reserve1, reserve0);
             if (amountOut < minAmountOut) revert SlippageExceeded();
 
-            pool.reserve1 = uint112(uint256(reserve1) + amountIn);
-            pool.reserve0 = uint112(uint256(reserve0) - amountOut);
+            // Safe to use unchecked: amountIn > 0 validated, amountOut < reserve0 (from formula)
+            unchecked {
+                pool.reserve1 = uint112(uint256(reserve1) + amountIn);
+                pool.reserve0 = uint112(uint256(reserve0) - amountOut);
+            }
             _safeTransfer(pool.token0, recipient, amountOut);
         }
 
