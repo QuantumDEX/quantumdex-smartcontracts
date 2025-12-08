@@ -1076,16 +1076,25 @@ describe("AMM Tests", function () {
       expect(finalBalanceA).to.equal(initialBalanceA - swapAmount);
       expect(finalBalanceC).to.be.greaterThan(initialBalanceC);
 
-      // Verify events were emitted
-      const swapEvents = receipt!.logs.filter(
-        (log: any) => log.fragment && log.fragment.name === "Swap"
-      );
+      // Verify events were emitted - use contract interface to parse logs
+      const swapEventFilter = amm.filters.Swap();
+      const swapEvents = receipt!.logs.filter((log: any) => {
+        try {
+          return amm.interface.parseLog(log)?.name === "Swap";
+        } catch {
+          return false;
+        }
+      });
       expect(swapEvents.length).to.equal(2); // Two hops
 
-      const multiHopEvent = receipt!.logs.find(
-        (log: any) => log.fragment && log.fragment.name === "MultiHopSwap"
-      );
-      expect(multiHopEvent).to.not.be.undefined;
+      const multiHopEvents = receipt!.logs.filter((log: any) => {
+        try {
+          return amm.interface.parseLog(log)?.name === "MultiHopSwap";
+        } catch {
+          return false;
+        }
+      });
+      expect(multiHopEvents.length).to.equal(1);
     });
 
     it("Should execute 3-hop swap (TokenA -> TokenB -> TokenC -> TokenD)", async function () {
@@ -1145,10 +1154,14 @@ describe("AMM Tests", function () {
       expect(finalBalanceA).to.equal(initialBalanceA - swapAmount);
       expect(finalBalanceD).to.be.greaterThan(initialBalanceD);
 
-      // Verify 3 Swap events were emitted
-      const swapEvents = receipt!.logs.filter(
-        (log: any) => log.fragment && log.fragment.name === "Swap"
-      );
+      // Verify 3 Swap events were emitted - use contract interface to parse logs
+      const swapEvents = receipt!.logs.filter((log: any) => {
+        try {
+          return amm.interface.parseLog(log)?.name === "Swap";
+        } catch {
+          return false;
+        }
+      });
       expect(swapEvents.length).to.equal(3);
     });
 
