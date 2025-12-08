@@ -283,7 +283,7 @@ Extend AMM to support native ETH (WETH) in addition to ERC20 tokens. This would 
 ## ❌ Pending Issues
 
 ### Issue #11: Flash Loans
-**Status:** ❌ PENDING  
+**Status:** ✅ COMPLETED  
 **Labels:** `smart-contracts`, `feature`, `advanced`  
 **Priority:** LOW
 
@@ -291,22 +291,27 @@ Extend AMM to support native ETH (WETH) in addition to ERC20 tokens. This would 
 Implement flash loan functionality to allow users to borrow tokens from pools without collateral, as long as they repay within the same transaction.
 
 **Current State:**
-- No flash loan functionality
+- Flash loan functionality implemented with 9 bps fee
+- IFlashLoanReceiver interface for callback pattern
+- Comprehensive test coverage
 
 **Acceptance Criteria:**
-- [ ] Add `flashLoan` function
-- [ ] Borrow tokens from pool
-- [ ] Callback to user's contract
-- [ ] Verify repayment + fee in same transaction
-- [ ] Revert if not repaid
-- [ ] Add tests
+- [x] Add `flashLoan` function
+- [x] Borrow tokens from pool
+- [x] Callback to user's contract
+- [x] Verify repayment + fee in same transaction
+- [x] Revert if not repaid
+- [x] Add tests
 - [ ] Security audit recommended
 
-**Technical Notes:**
+**Implementation Notes:**
+- Contract located at `contracts/AMM.sol`
+- Flash loan fee: 9 bps (0.09%)
 - Standard flash loan pattern: borrow → callback → repay + fee
-- Fee should be reasonable (e.g., 0.09% = 9 bps)
-- Need to track borrowed amount and verify repayment
-- High security risk - needs thorough testing and audit
+- FlashLoan event emitted for tracking
+- Test contract: `contracts/FlashLoanReceiver.sol`
+- Comprehensive test suite in `test/AMM.test.ts`
+- Security audit still recommended before mainnet deployment
 
 ---
 
