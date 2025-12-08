@@ -61,6 +61,23 @@ contract AMM is ReentrancyGuard, Ownable {
     /// @dev Standard flash loan fee rate used by major protocols
     uint16 private constant FLASH_LOAN_FEE_BPS = 9;
 
+    /// @notice Interface for flash loan callback
+    /// @dev Contracts that want to receive flash loans must implement this interface
+    interface IFlashLoanReceiver {
+        /// @notice Called after receiving flash loan tokens
+        /// @param token Address of the token borrowed
+        /// @param amount Amount of tokens borrowed
+        /// @param fee Fee amount that must be repaid
+        /// @param data Additional data passed to the flash loan
+        function onFlashLoan(
+            address token,
+            uint256 amount,
+            uint256 fee,
+            bytes calldata data
+        ) external;
+    }
+
+    // Custom errors for multi-hop swaps
     // Custom errors for gas optimization (replaces require strings)
     error FeeTooHigh();
     error PoolNotFound();
@@ -90,6 +107,11 @@ contract AMM is ReentrancyGuard, Ownable {
     error TransferFailed();
     error InsufficientETHBalance();
     // Flash loan errors
+    error FlashLoanNotRepaid();
+    error FlashLoanInsufficientBalance();
+    error FlashLoanInvalidReceiver();
+
+    // Custom errors for flash loans
     error FlashLoanNotRepaid();
     error FlashLoanInsufficientBalance();
     error FlashLoanInvalidReceiver();
