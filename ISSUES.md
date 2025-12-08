@@ -282,47 +282,6 @@ Extend AMM to support native ETH (WETH) in addition to ERC20 tokens. This would 
 
 ## ❌ Pending Issues
 
-### Issue #10: Multi-hop Swaps
-**Status:** ✅ COMPLETED  
-**Labels:** `smart-contracts`, `feature`, `enhancement`, `completed`  
-**Priority:** LOW
-
-**Description:**
-Implement multi-hop swap functionality to allow swaps through multiple pools in a single transaction (e.g., A → B → C).
-
-**Current State:**
-- ✅ Multi-hop swaps supported through `swapMultiHop` function
-- ✅ Users can swap through multiple pools in a single transaction
-
-**Acceptance Criteria:**
-- [x] Add `swapMultiHop` function
-- [x] Accept array of pool IDs and tokens
-- [x] Execute swaps sequentially
-- [x] Calculate optimal path (or let user specify) - User specifies path
-- [x] Apply slippage protection to final output
-- [x] Emit events for each hop
-- [x] Add tests for multi-hop swaps
-- [x] Gas optimization considerations (helper functions to reduce stack depth)
-
-**Technical Notes:**
-- Path: `address[]` for tokens, `bytes32[]` for pool IDs
-- Format: `path = [tokenA, tokenB, tokenC]`, `poolIds = [poolId1, poolId2]`
-- Each hop uses the previous output as input
-- Final slippage check on last output
-- Consider gas costs vs. separate transactions
-
-**Implementation Notes:**
-- `swapMultiHop` function accepts `path` (address[]) and `poolIds` (bytes32[])
-- Path must have at least 2 tokens, poolIds must be `path.length - 1`
-- Uses helper functions `_executeMultiHopSwap` and `_executeHop` to reduce stack depth
-- Emits `Swap` event for each hop and `MultiHopSwap` event for the entire transaction
-- Supports ETH in the path (first token can be ETH)
-- Comprehensive test suite covers 2-hop, 3-hop swaps, slippage protection, and error cases
-- Contract located at `contracts/AMM.sol`
-- Tests located at `test/AMM.test.ts` (Issue #10 test suite)
-
----
-
 ### Issue #11: Flash Loans
 **Status:** ❌ PENDING  
 **Labels:** `smart-contracts`, `feature`, `advanced`  
