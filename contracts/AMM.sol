@@ -606,23 +606,19 @@ contract AMM is ReentrancyGuard, Ownable {
         // Calculate amount out with fee
         uint256 amountInWithFee = (amountIn * (10000 - pool.feeBps)) / 10000;
         
-        require(path.length >= 2, "invalid path");
-        require(poolIds.length == path.length - 1, "invalid poolIds length");
-        require(amountIn > 0, "zero input");
-        require(recipient != address(0), "zero recipient");
-
-        // Validate ETH amount matches msg.value if first token is ETH
-        if (path[0] == ETH) {
-            require(msg.value == amountIn, "ETH amount mismatch");
+        if (zeroForOne) {
+            amountOut = _getAmountOut(amountInWithFee, reserve0, reserve1);
+            pool.reserve0 = uint112(uint256(reserve0) + amountIn);
+            pool.reserve1 = uint112(uint256(reserve1) - amountOut);
+            _safeTransfer(pool.token1, recipient, amountOut);
         } else {
-            require(msg.value == 0, "unexpected ETH");
+            amountOut = _getAmountOut(amountInWithFee, reserve1, reserve0);
+            pool.reserve1 = uint112(uint256(reserve1) + amountIn);
+            pool.reserve0 = uint112(uint256(reserve0) - amountOut);
+            _safeTransfer(pool.token0, recipient, amountOut);
         }
-
-        amountOut = _executeMultiHopSwap(path, poolIds, amountIn, recipient);
-        require(amountOut >= minAmountOut, "slippage");
-
-        // Emit MultiHopSwap event
-        emit MultiHopSwap(msg.sender, path, poolIds, amountIn, amountOut, recipient);
+        
+        return amountOut;
     }
 
     /// @notice Internal function to execute multi-hop swap
@@ -692,17 +688,10 @@ contract AMM is ReentrancyGuard, Ownable {
             amountOut = _getAmountOut(amountInWithFee, reserve1, reserve0);
             pool.reserve1 = uint112(uint256(reserve1) + amountIn);
             pool.reserve0 = uint112(uint256(reserve0) - amountOut);
-        }
-        
-        // Transfer output token to recipient
-        _safeTransfer(tokenOut, recipient, amountOut);
-        
-        // Emit Swap event for this hop
-        emit Swap(poolId, msg.sender, tokenIn, amountIn, amountOut, recipient);
-        
-        return amountOut;
             _safeTransfer(pool.token0, recipient, amountOut);
         }
+        
+        return amountOut;
     }
 
     function _getAmountOut(
