@@ -41,6 +41,12 @@ contract AMM is ReentrancyGuard, Ownable {
     /// but large enough to prevent rounding errors and ensure pool stability.
     uint256 private constant MINIMUM_LIQUIDITY = 1000;
 
+    // Custom errors for multi-hop swaps
+    error InvalidPath();
+    error InvalidPathLength();
+    error InvalidPool();
+    error SlippageExceeded();
+
     event PoolCreated(
         bytes32 indexed poolId,
         address indexed token0,
@@ -79,6 +85,8 @@ contract AMM is ReentrancyGuard, Ownable {
 
     event MultiHopSwap(
         address indexed sender,
+        address indexed tokenIn,
+        address indexed tokenOut,
         address[] path,
         bytes32[] poolIds,
         uint256 amountIn,
@@ -370,6 +378,19 @@ contract AMM is ReentrancyGuard, Ownable {
     }
 
     /// @notice Execute a multi-hop swap through multiple pools
+    /// @dev Path format: [tokenIn, poolId1, tokenMid, poolId2, tokenOut, ...]
+    /// @dev Path uses bytes32[] where even indices are tokens (as bytes32) and odd indices are poolIds
+    /// @dev Example: [tokenA, poolIdAB, tokenB, poolIdBC, tokenC] for A->B->C swap
+    /// @dev Each hop uses the previous output as input for the next swap
+    /// @dev Slippage protection is applied only to the final output amount
+    /// @dev Intermediate tokens are held in the contract between hops
+    /// @param path Array alternating between tokens (as bytes32) and poolIds
+    /// @param amountIn Amount of input token
+    /// @param minAmountOut Minimum amount of output token (slippage protection)
+    /// @param recipient Address to receive output tokens
+    /// @return amountOut Amount of output token received
+    function swapMultiHop(
+        bytes32[] calldata path,
     /// @dev Executes swaps sequentially, using output of one hop as input to the next
     /// @param path Array of token addresses [tokenA, tokenB, tokenC, ...]
     /// @param poolIds Array of pool IDs [poolId1, poolId2, ...] where poolId1 is for tokenA->tokenB, poolId2 is for tokenB->tokenC
@@ -384,6 +405,116 @@ contract AMM is ReentrancyGuard, Ownable {
         uint256 minAmountOut,
         address recipient
     ) external payable nonReentrant returns (uint256 amountOut) {
+        // Validate path format
+        if (!_validatePath(path)) {
+            revert InvalidPath();
+        }
+        
+        // Validate input amount
+        if (amountIn == 0) {
+            revert("zero input");
+        }
+        
+        // Validate recipient
+        if (recipient == address(0)) {
+            revert("zero recipient");
+        }
+        
+        // Calculate number of hops: (path.length - 1) / 2
+        // Path: [token0, poolId1, token1, poolId2, token2]
+        // Hops: 2 (token0->token1 via poolId1, token1->token2 via poolId2)
+        uint256 numHops = (path.length - 1) / 2;
+        require(numHops > 0, "invalid path");
+        require(numHops <= 10, "too many hops"); // Gas limit protection (max 10 hops)
+        uint256 currentAmount = amountIn;
+        
+        // Handle initial token transfer (only for first hop)
+        address firstToken = address(uint160(uint256(path[0])));
+        if (firstToken == ETH) {
+            require(msg.value == amountIn, "ETH amount mismatch");
+        } else {
+            require(msg.value == 0, "unexpected ETH");
+            _safeTransferFrom(firstToken, msg.sender, address(this), amountIn);
+        }
+        
+        // Execute swaps sequentially
+        for (uint256 i = 0; i < numHops; i++) {
+            uint256 tokenInIndex = i * 2;
+            uint256 poolIdIndex = tokenInIndex + 1;
+            uint256 tokenOutIndex = tokenInIndex + 2;
+            
+            address tokenIn = address(uint160(uint256(path[tokenInIndex])));
+            bytes32 poolId = path[poolIdIndex];
+            address tokenOut = address(uint160(uint256(path[tokenOutIndex])));
+            
+            // Execute single hop swap
+            // For intermediate hops, recipient is this contract (tokens stay in contract)
+            // For final hop, recipient is the final recipient
+            currentAmount = _executeHop(poolId, tokenIn, tokenOut, currentAmount, i == numHops - 1 ? recipient : address(this));
+        }
+        
+        amountOut = currentAmount;
+        require(amountOut >= minAmountOut, "slippage");
+        
+        // Validate final output is non-zero
+        require(amountOut > 0, "zero output");
+        
+        // Emit MultiHopSwap event
+        address finalTokenIn = address(uint160(uint256(path[0])));
+        address finalTokenOut = address(uint160(uint256(path[path.length - 1])));
+        emit MultiHopSwap(msg.sender, finalTokenIn, finalTokenOut, amountIn, amountOut, recipient);
+    }
+
+    /// @notice Validate multi-hop swap path format
+    /// @dev Path must alternate: token (as bytes32), poolId, token (as bytes32), poolId, ...
+    /// @param path Array to validate
+    /// @return isValid True if path format is valid
+    function _validatePath(bytes32[] calldata path) internal pure returns (bool isValid) {
+        // Path must have at least 3 elements and be odd length
+        if (path.length < 3 || path.length % 2 == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    /// @notice Execute a single hop in a multi-hop swap
+    /// @dev Internal function to execute one swap in the path
+    /// @param poolId Pool identifier for this hop
+    /// @param tokenIn Input token address
+    /// @param tokenOut Output token address
+    /// @param amountIn Amount of input token
+    /// @param recipient Address to receive output (contract for intermediate hops, final recipient for last hop)
+    /// @return amountOut Amount of output token received
+    function _executeHop(
+        bytes32 poolId,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        address recipient
+    ) internal returns (uint256 amountOut) {
+        // Validate pool exists
+        Pool storage pool = pools[poolId];
+        if (!pool.exists) {
+            revert InvalidPool();
+        }
+        
+        // Determine swap direction and validate tokens match pool
+        bool zeroForOne;
+        if (tokenIn == pool.token0 && tokenOut == pool.token1) {
+            zeroForOne = true;
+        } else if (tokenIn == pool.token1 && tokenOut == pool.token0) {
+            zeroForOne = false;
+        } else {
+            revert InvalidPath();
+        }
+        
+        // Get reserves and validate
+        (uint112 reserve0, uint112 reserve1) = (pool.reserve0, pool.reserve1);
+        require(reserve0 > 0 && reserve1 > 0, "no reserves");
+        
+        // Calculate amount out with fee
+        uint256 amountInWithFee = (amountIn * (10000 - pool.feeBps)) / 10000;
+        
         require(path.length >= 2, "invalid path");
         require(poolIds.length == path.length - 1, "invalid poolIds length");
         require(amountIn > 0, "zero input");
@@ -470,6 +601,15 @@ contract AMM is ReentrancyGuard, Ownable {
             amountOut = _getAmountOut(amountInWithFee, reserve1, reserve0);
             pool.reserve1 = uint112(uint256(reserve1) + amountIn);
             pool.reserve0 = uint112(uint256(reserve0) - amountOut);
+        }
+        
+        // Transfer output token to recipient
+        _safeTransfer(tokenOut, recipient, amountOut);
+        
+        // Emit Swap event for this hop
+        emit Swap(poolId, msg.sender, tokenIn, amountIn, amountOut, recipient);
+        
+        return amountOut;
             _safeTransfer(pool.token0, recipient, amountOut);
         }
     }

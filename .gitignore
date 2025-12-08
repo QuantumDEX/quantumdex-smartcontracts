@@ -19,3 +19,14 @@
 
 # Hardhat coverage reports
 /coverage
+
+# PR descriptions
+PR_DESCRIPTION_*.md
+
+# Planning and commit plan files
+*_COMMIT_PLAN.md
+MULTIHOP_COMMIT_PLAN.md
+
+# Commit timing scripts
+*.sh
+!scripts/*.sh
