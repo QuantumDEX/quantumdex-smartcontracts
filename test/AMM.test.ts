@@ -79,7 +79,7 @@ describe("AMM Tests", function () {
       const { tokenA, alice, bob } = await loadFixture(deployContractsFixture);
 
       const mintAmount = ethers.parseUnits("1000", 18);
-      await expect(tokenA.connect(alice).mint(bob.address, mintAmount)).to.be.reverted;
+      await expect((tokenA.connect(alice) as any).mint(bob.address, mintAmount)).to.be.reverted;
     });
   });
 
