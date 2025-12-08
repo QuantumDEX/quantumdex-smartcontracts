@@ -1076,16 +1076,8 @@ describe("AMM Tests", function () {
       expect(finalBalanceA).to.equal(initialBalanceA - swapAmount);
       expect(finalBalanceC).to.be.greaterThan(initialBalanceC);
 
-      // Verify events were emitted - use contract interface to parse logs
-      const swapEvents = receipt!.logs.filter((log: any) => {
-        try {
-          return amm.interface.parseLog(log)?.name === "Swap";
-        } catch {
-          return false;
-        }
-      });
-      expect(swapEvents.length).to.equal(2); // Two hops
-
+      // Verify MultiHopSwap event was emitted
+      // Note: swapMultiHop only emits MultiHopSwap event, not individual Swap events per hop
       const multiHopEvents = receipt!.logs.filter((log: any) => {
         try {
           return amm.interface.parseLog(log)?.name === "MultiHopSwap";
@@ -1153,15 +1145,16 @@ describe("AMM Tests", function () {
       expect(finalBalanceA).to.equal(initialBalanceA - swapAmount);
       expect(finalBalanceD).to.be.greaterThan(initialBalanceD);
 
-      // Verify 3 Swap events were emitted - use contract interface to parse logs
-      const swapEvents = receipt!.logs.filter((log: any) => {
+      // Verify MultiHopSwap event was emitted
+      // Note: swapMultiHop only emits MultiHopSwap event, not individual Swap events per hop
+      const multiHopEvents = receipt!.logs.filter((log: any) => {
         try {
-          return amm.interface.parseLog(log)?.name === "Swap";
+          return amm.interface.parseLog(log)?.name === "MultiHopSwap";
         } catch {
           return false;
         }
       });
-      expect(swapEvents.length).to.equal(3);
+      expect(multiHopEvents.length).to.equal(1);
     });
 
     it("Should enforce slippage protection on final output", async function () {
