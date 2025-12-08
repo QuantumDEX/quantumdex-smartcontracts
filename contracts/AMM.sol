@@ -410,6 +410,76 @@ contract AMM is ReentrancyGuard, Ownable {
         emit Swap(poolId, msg.sender, tokenIn, amountIn, amountOut, recipient);
     }
 
+    /// @notice Execute a flash loan from a pool
+    /// @dev Borrows tokens from the pool, calls the receiver's callback, and verifies repayment + fee
+    /// @dev Flash loan fee is 9 bps (0.09%) of the borrowed amount
+    /// @dev The receiver must implement IFlashLoanReceiver interface
+    /// @param poolId The pool identifier to borrow from
+    /// @param token The token to borrow (must be token0 or token1 of the pool)
+    /// @param amount The amount of tokens to borrow
+    /// @param data Additional data to pass to the callback
+    function flashLoan(
+        bytes32 poolId,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external nonReentrant {
+        require(amount > 0, "zero amount");
+        
+        Pool storage pool = pools[poolId];
+        require(pool.exists, "pool not found");
+        
+        // Verify token is part of the pool
+        require(token == pool.token0 || token == pool.token1, "invalid token");
+        
+        // Calculate fee (9 bps = 0.09%)
+        uint256 fee = (amount * FLASH_LOAN_FEE_BPS) / 10000;
+        uint256 repayAmount = amount + fee;
+        
+        // Get initial balance
+        uint256 balanceBefore = _getBalance(token);
+        
+        // Verify pool has sufficient liquidity
+        if (token == pool.token0) {
+            require(uint256(pool.reserve0) >= amount, "insufficient liquidity");
+        } else {
+            require(uint256(pool.reserve1) >= amount, "insufficient liquidity");
+        }
+        
+        // Transfer tokens to borrower
+        _safeTransfer(token, msg.sender, amount);
+        
+        // Call callback
+        IFlashLoanReceiver(msg.sender).onFlashLoan(token, amount, fee, data);
+        
+        // Verify repayment + fee
+        uint256 balanceAfter = _getBalance(token);
+        if (balanceAfter < balanceBefore + repayAmount) {
+            revert FlashLoanNotRepaid();
+        }
+        
+        // Update reserves (add fee to reserves)
+        if (token == pool.token0) {
+            pool.reserve0 = uint112(uint256(pool.reserve0) + repayAmount);
+        } else {
+            pool.reserve1 = uint112(uint256(pool.reserve1) + repayAmount);
+        }
+        
+        emit FlashLoan(poolId, token, msg.sender, amount, fee);
+    }
+
+    /// @notice Get the balance of a token held by this contract
+    /// @dev Helper function for flash loan balance tracking
+    /// @param token The token address (use address(0) for ETH)
+    /// @return balance The balance of the token
+    function _getBalance(address token) internal view returns (uint256 balance) {
+        if (token == ETH) {
+            return address(this).balance;
+        } else {
+            return IERC20(token).balanceOf(address(this));
+        }
+    }
+
     /// @notice Execute a multi-hop swap through multiple pools
     /// @dev Path format: [tokenIn, poolId1, tokenMid, poolId2, tokenOut, ...]
     /// @dev Path uses bytes32[] where even indices are tokens (as bytes32) and odd indices are poolIds
