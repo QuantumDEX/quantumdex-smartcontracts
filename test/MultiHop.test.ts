@@ -88,5 +88,66 @@ describe("Multi-hop Swaps", function () {
       ).to.be.revertedWith("zero recipient");
     });
   });
+
+  describe("2-Hop Swap", function () {
+    it("Should execute 2-hop swap A -> B -> C", async function () {
+      const { amm, tokenA, tokenB, tokenC, deployer, alice } = await loadFixture(deployContractsFixture);
+
+      // Setup: Create pools A-B and B-C
+      const amountA = ethers.parseUnits("10000", 18);
+      const amountB = ethers.parseUnits("20000", 18);
+      const amountC = ethers.parseUnits("30000", 18);
+
+      await tokenA.mint(deployer.address, amountA * 2n);
+      await tokenB.mint(deployer.address, amountB * 3n);
+      await tokenC.mint(deployer.address, amountC * 2n);
+
+      await tokenA.approve(await amm.getAddress(), amountA * 2n);
+      await tokenB.approve(await amm.getAddress(), amountB * 3n);
+      await tokenC.approve(await amm.getAddress(), amountC * 2n);
+
+      // Create pool A-B
+      const poolIdAB = await amm.getPoolId(await tokenA.getAddress(), await tokenB.getAddress(), FEE_BPS);
+      await amm.createPool(
+        await tokenA.getAddress(),
+        await tokenB.getAddress(),
+        amountA,
+        amountB,
+        0
+      );
+
+      // Create pool B-C
+      const poolIdBC = await amm.getPoolId(await tokenB.getAddress(), await tokenC.getAddress(), FEE_BPS);
+      await amm.createPool(
+        await tokenB.getAddress(),
+        await tokenC.getAddress(),
+        amountB,
+        amountC,
+        0
+      );
+
+      // Prepare swap
+      const swapAmount = ethers.parseUnits("100", 18);
+      await tokenA.mint(alice.address, swapAmount);
+      await tokenA.connect(alice).approve(await amm.getAddress(), swapAmount);
+
+      // Build path: [tokenA, poolIdAB, tokenB, poolIdBC, tokenC]
+      const tokenABytes = ethers.zeroPadValue(await tokenA.getAddress(), 32);
+      const poolIdABBytes = poolIdAB;
+      const tokenBBytes = ethers.zeroPadValue(await tokenB.getAddress(), 32);
+      const poolIdBCBytes = poolIdBC;
+      const tokenCBytes = ethers.zeroPadValue(await tokenC.getAddress(), 32);
+      const path = [tokenABytes, poolIdABBytes, tokenBBytes, poolIdBCBytes, tokenCBytes];
+
+      const initialBalanceC = await tokenC.balanceOf(alice.address);
+
+      // Execute multi-hop swap
+      const tx = await amm.connect(alice).swapMultiHop(path, swapAmount, 0, alice.address);
+      await tx.wait();
+
+      const finalBalanceC = await tokenC.balanceOf(alice.address);
+      expect(finalBalanceC).to.be.greaterThan(initialBalanceC);
+    });
+  });
 });
 
