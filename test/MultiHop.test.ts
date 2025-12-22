@@ -427,5 +427,30 @@ describe("Multi-hop Swaps", function () {
       expect(receipt.status).to.equal(1);
     });
   });
+
+  describe("Maximum Hops Limit", function () {
+    it("Should reject path with too many hops", async function () {
+      const { amm, tokenA, tokenB, alice } = await loadFixture(deployContractsFixture);
+      
+      // Create a path with more than 10 hops (21 elements = 10 hops)
+      const tokenABytes = ethers.zeroPadValue(await tokenA.getAddress(), 32);
+      const tokenBBytes = ethers.zeroPadValue(await tokenB.getAddress(), 32);
+      const fakePoolId = ethers.keccak256(ethers.toUtf8Bytes("fake"));
+      
+      // Build path with 11 hops (23 elements)
+      const path: string[] = [tokenABytes];
+      for (let i = 0; i < 11; i++) {
+        path.push(fakePoolId);
+        path.push(i % 2 === 0 ? tokenABytes : tokenBBytes);
+      }
+      
+      await tokenA.mint(alice.address, ethers.parseUnits("100", 18));
+      await tokenA.connect(alice).approve(await amm.getAddress(), ethers.parseUnits("100", 18));
+      
+      await expect(
+        amm.connect(alice).swapMultiHop(path, ethers.parseUnits("100", 18), 0, alice.address)
+      ).to.be.revertedWith("too many hops");
+    });
+  });
 });
 
