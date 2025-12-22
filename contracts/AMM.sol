@@ -381,6 +381,7 @@ contract AMM is ReentrancyGuard, Ownable {
     /// @dev Example: [tokenA, poolIdAB, tokenB, poolIdBC, tokenC] for A->B->C swap
     /// @dev Each hop uses the previous output as input for the next swap
     /// @dev Slippage protection is applied only to the final output amount
+    /// @dev Intermediate tokens are held in the contract between hops
     /// @param path Array alternating between tokens (as bytes32) and poolIds
     /// @param amountIn Amount of input token
     /// @param minAmountOut Minimum amount of output token (slippage protection)
