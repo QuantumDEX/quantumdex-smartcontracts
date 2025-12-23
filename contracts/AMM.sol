@@ -413,6 +413,7 @@ contract AMM is ReentrancyGuard, Ownable {
         // Hops: 2 (token0->token1 via poolId1, token1->token2 via poolId2)
         uint256 numHops = (path.length - 1) / 2;
         require(numHops > 0, "invalid path");
+        require(numHops <= 10, "too many hops"); // Gas limit protection
         uint256 currentAmount = amountIn;
         
         // Handle initial token transfer (only for first hop)
