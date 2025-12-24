@@ -496,7 +496,7 @@ contract AMM is ReentrancyGuard, Ownable {
             revert InvalidPath();
         }
         
-        // Get reserves
+        // Get reserves and validate
         (uint112 reserve0, uint112 reserve1) = (pool.reserve0, pool.reserve1);
         require(reserve0 > 0 && reserve1 > 0, "no reserves");
         
